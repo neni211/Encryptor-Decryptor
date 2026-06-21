@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Encryptor — AES encrypt & decrypt</title>
+<style>
+  :root {
+    --bg-1: #0f172a;
+    --bg-2: #1e293b;
+    --card: rgba(255, 255, 255, 0.06);
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --success: #10b981;
+    --error: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    line-height: 1.5;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 720px;
+    background: var(--card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .mode-toggle {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+
+  .mode-toggle button {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .mode-toggle button.active {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  textarea, input[type="password"] {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus, input[type="password"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  textarea {
+    min-height: 110px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+
+  #output {
+    background: rgba(0, 0, 0, 0.35);
+    min-height: 110px;
+    word-break: break-all;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  button.primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:active { transform: scale(0.99); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .copy-btn {
+    margin-top: 8px;
+    padding: 8px 14px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .copy-btn.copied {
+    color: var(--success);
+    border-color: var(--success);
+  }
+
+  .status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: none;
+  }
+
+  .status.error {
+    display: block;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+  }
+
+  .status.success {
+    display: block;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+  }
+
+  .info {
+    margin-top: 20px;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .info strong { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 Encryptor</h1>
+    <p class="subtitle">AES-256 encryption with password-based key derivation. Everything runs in your browser.</p>
+
+    <div class="mode-toggle">
+      <button id="mode-encrypt" class="active" type="button">Encrypt</button>
+      <button id="mode-decrypt" type="button">Decrypt</button>
+    </div>
+
+    <div class="field">
+      <label id="input-label" for="input">Text to encrypt</label>
+      <textarea id="input" placeholder="Type or paste the text you want to encrypt..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Choose a strong password" autocomplete="off" />
+    </div>
+
+    <button class="primary" id="submit" type="button">Encrypt</button>
+
+    <div class="status" id="status"></div>
+
+    <div class="field" style="margin-top: 20px;">
+      <label id="output-label" for="output">Encrypted output</label>
+      <textarea id="output" readonly placeholder="Result will appear here..."></textarea>
+    </div>
+
+    <button class="copy-btn" id="copy" type="button">Copy to clipboard</button>
+
+    <div class="info">
+      <strong>How it works:</strong> Your password is run through PBKDF2 (250,000 iterations, SHA-256) with a random 16-byte salt to derive a 256-bit AES key. The text is encrypted with AES-GCM using a random 12-byte IV. The salt, IV, and ciphertext are bundled together as base64 — paste it back in <em>Decrypt</em> mode with the same password to recover the original.
+    </div>
+  </div>
+
+<script>
+(() => {
+  const PBKDF2_ITERATIONS = 250000;
+  const SALT_LENGTH = 16;
+  const IV_LENGTH = 12;
+
+  let mode = 'encrypt'; // 'encrypt' | 'decrypt'
+
+  const $ = (id) => document.getElementById(id);
+  const inputEl = $('input');
+  const passwordEl = $('password');
+  const outputEl = $('output');
+  const submitEl = $('submit');
+  const copyEl = $('copy');
+  const statusEl = $('status');
+  const inputLabel = $('input-label');
+  const outputLabel = $('output-label');
+
+  // ---- Mode toggle ----
+  const setMode = (next) => {
+    mode = next;
+    $('mode-encrypt').classList.toggle('active', next === 'encrypt');
+    $('mode-decrypt').classList.toggle('active', next === 'decrypt');
+    submitEl.textContent = next === 'encrypt' ? 'Encrypt' : 'Decrypt';
+    inputLabel.textContent = next === 'encrypt' ? 'Text to encrypt' : 'Encrypted text (base64)';
+    outputLabel.textContent = next === 'encrypt' ? 'Encrypted output' : 'Decrypted text';
+    inputEl.placeholder = next === 'encrypt'
+      ? 'Type or paste the text you want to encrypt...'
+      : 'Paste the base64 blob produced by Encrypt...';
+    outputEl.value = '';
+    hideStatus();
+  };
+
+  $('mode-encrypt').addEventListener('click', () => setMode('encrypt'));
+  $('mode-decrypt').addEventListener('click', () => setMode('decrypt'));
+
+  // ---- Status helpers ----
+  const showStatus = (msg, kind) => {
+    statusEl.textContent = msg;
+    statusEl.className = 'status ' + kind;
+  };
+  const hideStatus = () => {
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+  };
+
+  // ---- Encoding helpers ----
+  const toB64 = (buf) => {
+    const bytes = new Uint8Array(buf);
+    let str = '';
+    for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+    return btoa(str);
+  };
+
+  const fromB64 = (str) => {
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  };
+
+  // ---- Key derivation ----
+  const deriveKey = async (password, salt) => {
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(password),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  };
+
+  // ---- Encrypt ----
+  const encryptText = async (plaintext, password) => {
+    const enc = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+    const key = await deriveKey(password, salt);
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      enc.encode(plaintext)
+    );
+    // Pack: salt | iv | ciphertext
+    const packed = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+    packed.set(salt, 0);
+    packed.set(iv, salt.length);
+    packed.set(new Uint8Array(ciphertext), salt.length + iv.length);
+    return toB64(packed);
+  };
+
+  // ---- Decrypt ----
+  const decryptText = async (b64, password) => {
+    let packed;
+    try {
+      packed = new Uint8Array(fromB64(b64.trim()));
+    } catch {
+      throw new Error('Input is not valid base64.');
+    }
+    if (packed.length < SALT_LENGTH + IV_LENGTH + 16) {
+      throw new Error('Encrypted blob is too short to be valid.');
+    }
+    const salt = packed.slice(0, SALT_LENGTH);
+    const iv = packed.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+    const ciphertext = packed.slice(SALT_LENGTH + IV_LENGTH);
+    const key = await deriveKey(password, salt);
+    try {
+      const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return new TextDecoder().decode(plainBuf);
+    } catch {
+      throw new Error('Decryption failed — wrong password or corrupted data.');
+    }
+  };
+
+  // ---- Submit ----
+  submitEl.addEventListener('click', async () => {
+    const text = inputEl.value;
+    const password = passwordEl.value;
+    if (!text) return showStatus('Please enter some text first.', 'error');
+    if (!password) return showStatus('Please enter a password.', 'error');
+
+    submitEl.disabled = true;
+    submitEl.textContent = mode === 'encrypt' ? 'Encrypting…' : 'Decrypting…';
+    outputEl.value = '';
+    hideStatus();
+
+    try {
+      const result = mode === 'encrypt'
+        ? await encryptText(text, password)
+        : await decryptText(text, password);
+      outputEl.value = result;
+      showStatus(mode === 'encrypt' ? '✓ Encrypted successfully.' : '✓ Decrypted successfully.', 'success');
+    } catch (err) {
+      showStatus(err.message || 'Something went wrong.', 'error');
+      outputEl.value = '';
+    } finally {
+      submitEl.disabled = false;
+      submitEl.textContent = mode === 'encrypt' ? 'Encrypt' : 'Decrypt';
+    }
+  });
+
+  // ---- Copy ----
+  copyEl.addEventListener('click', async () => {
+    if (!outputEl.value) return;
+    try {
+      await navigator.clipboard.writeText(outputEl.value);
+      const original = copyEl.textContent;
+      copyEl.textContent = '✓ Copied!';
+      copyEl.classList.add('copied');
+      setTimeout(() => {
+        copyEl.textContent = original;
+        copyEl.classList.remove('copied');
+      }, 1500);
+    } catch {
+      showStatus('Could not access clipboard. Select the text and copy manually.', 'error');
+    }
+  });
+})();
+</script>
+</body>
+</html>
